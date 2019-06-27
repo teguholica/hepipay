@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.teguholica.hebapay">
+          package="com.teguholica.hepipay">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
@@ -12,9 +12,9 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/AppTheme">
-        <activity android:name=".ui.scanner.ScannerActivity" android:launchMode="singleTask">
+        <activity android:name="com.teguholica.hepipay.ui.scanner.ScannerActivity" android:launchMode="singleTask">
         </activity>
-        <activity android:name=".ui.new_account.NewAccountActivity">
+        <activity android:name="com.teguholica.hepipay.ui.new_account.NewAccountActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
@@ -22,10 +22,10 @@
             </intent-filter>
         </activity>
         <activity
-                android:name=".ui.send.SendActivity"
+                android:name="com.teguholica.hepipay.ui.send.SendActivity"
                 android:launchMode="singleTask">
         </activity>
-        <activity android:name=".ui.main.MainActivity">
+        <activity android:name="com.teguholica.hepipay.ui.main.MainActivity">
         </activity>
     </application>
 

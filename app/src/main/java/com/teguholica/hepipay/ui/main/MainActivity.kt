@@ -1,4 +1,4 @@
-package com.teguholica.hebapay.ui.main
+package com.teguholica.hepipay.ui.main
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -6,12 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import com.teguholica.hebapay.R
-import com.teguholica.hebapay.commons.BaseActivity
-import com.teguholica.hebapay.datasources.PrefDataSource
-import com.teguholica.hebapay.models.Account
-import com.teguholica.hebapay.repositories.Repository
-import com.teguholica.hebapay.ui.send.SendActivity
+import com.teguholica.hepipay.R
+import com.teguholica.hepipay.commons.BaseActivity
+import com.teguholica.hepipay.datasources.PrefDataSource
+import com.teguholica.hepipay.models.Account
+import com.teguholica.hepipay.repositories.Repository
+import com.teguholica.hepipay.ui.send.SendActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

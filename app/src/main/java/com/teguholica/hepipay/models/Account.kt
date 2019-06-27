@@ -1,4 +1,4 @@
-package com.teguholica.hebapay.models
+package com.teguholica.hepipay.models
 
 data class Account(
     var id: String,

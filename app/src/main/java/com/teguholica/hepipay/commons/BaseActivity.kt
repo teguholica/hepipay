@@ -1,4 +1,4 @@
-package com.teguholica.hebapay.commons
+package com.teguholica.hepipay.commons
 
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog

@@ -1,14 +1,12 @@
-package com.teguholica.hebapay.repositories
+package com.teguholica.hepipay.repositories
 
 import android.util.Log
-import com.teguholica.hebapay.datasources.PrefDataSource
-import com.teguholica.hebapay.models.Account
+import com.teguholica.hepipay.datasources.PrefDataSource
+import com.teguholica.hepipay.models.Account
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 import org.stellar.sdk.*
-import java.net.URL
 
 
 class Repository(

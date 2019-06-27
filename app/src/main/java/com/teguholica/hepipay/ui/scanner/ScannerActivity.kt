@@ -1,14 +1,13 @@
-package com.teguholica.hebapay.ui.scanner
+package com.teguholica.hepipay.ui.scanner
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.DecodeCallback
 import com.budiyev.android.codescanner.ErrorCallback
-import com.teguholica.hebapay.R
+import com.teguholica.hepipay.R
 import kotlinx.android.synthetic.main.activity_scanner.*
 
 class ScannerActivity : AppCompatActivity() {

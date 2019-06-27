@@ -1,4 +1,4 @@
-package com.teguholica.hebapay
+package com.teguholica.hepipay
 
 import org.junit.Test
 
