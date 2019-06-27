@@ -3,10 +3,12 @@ package com.teguholica.hepipay.repositories
 import android.util.Log
 import com.teguholica.hepipay.datasources.PrefDataSource
 import com.teguholica.hepipay.models.Account
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.stellar.sdk.*
+import kotlin.coroutines.resume
+import android.widget.Toast
+import com.parse.*
+import com.teguholica.hepipay.ui.main.MainActivity
 
 
 class Repository(
@@ -19,6 +21,57 @@ class Repository(
 
     private val distributionAccountId = "GBKPPKPGCTJGRU7PFJZBIKCJ3HRNRZYL7UAYADAB35NJ2AK3ISDEFFIO"
     private val distributionKey = "SCYKDBUPE56PAVR55ZIRGJ4PK4ASTQWMIS6PIJK7BDQKJJ6ZW54WRKA5"
+
+    private val parseInstallation by lazy { ParseInstallation.getCurrentInstallation() }
+    private val parseUser by lazy { ParseUser.getCurrentUser() }
+
+    suspend fun signup(email: String, password: String): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
+        val user = ParseUser()
+        user.username = email
+        user.email = email
+        user.setPassword(password)
+        suspendCancellableCoroutine<Boolean> { resolve ->
+            user.signUpInBackground {
+                resolve.invokeOnCancellation {
+                    cancel()
+                }
+                if (it == null) {
+                    resolve.resume(true)
+                } else {
+                    ParseUser.logOut()
+                    resolve.resume(false)
+                }
+            }
+        }
+    }
+
+    suspend fun login(email: String, password: String): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
+        suspendCancellableCoroutine<Boolean> { resolve ->
+            resolve.invokeOnCancellation {
+                cancel()
+            }
+            ParseUser.logInInBackground(email, password) { parseUser, e ->
+                if (parseUser != null) {
+                    parseInstallation.put("user", parseUser)
+                    parseInstallation.save()
+                    resolve.resume(true)
+                } else {
+                    ParseUser.logOut()
+                    resolve.resume(false)
+                }
+            }
+        }
+    }
+
+    suspend fun isLogin(): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
+        if (parseUser == null) {
+            false
+        } else {
+            parseInstallation.put("user", parseUser)
+            parseInstallation.save()
+            parseUser.isAuthenticated
+        }
+    }
 
     suspend fun createAccount(): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
         val distributionPair = KeyPair.fromSecretSeed(distributionKey)
@@ -60,6 +113,7 @@ class Repository(
 
         val changeTrustTransaction = Transaction.Builder(newAccount, Network.TESTNET)
             .addOperation(ChangeTrustOperation.Builder(asset, "20000000").build())
+            .addOperation(ManageDataOperation.Builder("hepiId", parseUser.username.toByteArray()).build())
             .addMemo(Memo.text("Trust IDR from HEBA"))
             .setTimeout(180)
             .build()
@@ -156,4 +210,25 @@ class Repository(
         }
     }
 
+    suspend fun sendNotification(username: String, msg: String): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
+        suspendCancellableCoroutine<Boolean> {
+            it.invokeOnCancellation {
+                cancel()
+            }
+
+            val parameters = HashMap<String, String>()
+            parameters["username"] = username
+            parameters["msg"] = msg
+
+            ParseCloud.callFunctionInBackground("sendnotification", parameters,
+                FunctionCallback<Map<String, Any>> { _, e ->
+                    if (e == null) {
+                        it.resume(true)
+                    } else {
+                        it.resume(false)
+                    }
+                }
+            )
+        }
+    }
 }

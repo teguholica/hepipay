@@ -84,6 +84,9 @@ class MainActivity : BaseActivity() {
     private fun trustIDR() {
         launch(Dispatchers.Main) {
             repository.issuerTrust()
+            getAccountInfo()
+            getXLMBalance()
+            getIDRBalance()
             showDialogMessage("Account trust IDR")
         }
     }

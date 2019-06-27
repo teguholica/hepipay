@@ -53,6 +53,7 @@ class SendActivity : BaseActivity() {
 
             if (isSent) {
                 showToast("IDR sent")
+                repository.sendNotification("emulator@gmail.com", "")
                 onBackPressed()
             } else {
                 showDialogMessage("failed to send IDR")
