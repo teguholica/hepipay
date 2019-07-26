@@ -1,109 +1,41 @@
 package com.teguholica.hepipay.repositories
 
-import android.util.Log
-import com.teguholica.hepipay.datasources.PrefDataSource
+import android.content.Context
+import com.teguholica.hepipay.datasources.local_database.LocalDatabase
 import com.teguholica.hepipay.models.Account
 import kotlinx.coroutines.*
 import org.stellar.sdk.*
-import kotlin.coroutines.resume
-import android.widget.Toast
-import com.parse.*
-import com.teguholica.hepipay.ui.main.MainActivity
 
 
 class Repository(
-    private val scope: CoroutineScope,
-    private val prefDataSource: PrefDataSource
+    private val context: Context,
+    private val scope: CoroutineScope
 ) {
 
-    private val issuerAccountId = "GDOVFMOPIN3XGEB25G75OOYH7POUHLNAHBIOI52MAE7JKNF46ZFOR2QT"
-    private val issuerKey = "SAM2I5OREQUFKYRF6FUCV36REAVNTK5MKMDTDMSXYMY4DHKH6RTQAJVP"
+    private val issuerKey = "SCZ6PTG3RQ5TPYDB4SI5PKU3KPGO2QWBKXQMBPYAEXF5PGTZ46E76LQ2"
 
-    private val distributionAccountId = "GBKPPKPGCTJGRU7PFJZBIKCJ3HRNRZYL7UAYADAB35NJ2AK3ISDEFFIO"
-    private val distributionKey = "SCYKDBUPE56PAVR55ZIRGJ4PK4ASTQWMIS6PIJK7BDQKJJ6ZW54WRKA5"
+    suspend fun createAccount(asDefault: Boolean = false): Account =
+        withContext(scope.coroutineContext + Dispatchers.IO) {
+            val db = LocalDatabase.connect(context)
 
-    private val parseInstallation by lazy { ParseInstallation.getCurrentInstallation() }
-    private val parseUser by lazy { ParseUser.getCurrentUser() }
+            val newAccountPair = KeyPair.random()
+            val newAccount = Account(newAccountPair.accountId, String(newAccountPair.secretSeed))
 
-    suspend fun signup(email: String, password: String): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
-        val user = ParseUser()
-        user.username = email
-        user.email = email
-        user.setPassword(password)
-        suspendCancellableCoroutine<Boolean> { resolve ->
-            user.signUpInBackground {
-                resolve.invokeOnCancellation {
-                    cancel()
-                }
-                if (it == null) {
-                    resolve.resume(true)
-                } else {
-                    ParseUser.logOut()
-                    resolve.resume(false)
-                }
-            }
+            db.accountDao().insertAll(
+                com.teguholica.hepipay.datasources.local_database.Account(
+                    accountId = newAccount.accountId,
+                    secretKey = newAccount.secretKey,
+                    isDefault = asDefault
+                )
+            )
+
+            db.close()
+
+            return@withContext newAccount
         }
-    }
 
-    suspend fun login(email: String, password: String): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
-        suspendCancellableCoroutine<Boolean> { resolve ->
-            resolve.invokeOnCancellation {
-                cancel()
-            }
-            ParseUser.logInInBackground(email, password) { parseUser, e ->
-                if (parseUser != null) {
-                    parseInstallation.put("user", parseUser)
-                    parseInstallation.save()
-                    resolve.resume(true)
-                } else {
-                    ParseUser.logOut()
-                    resolve.resume(false)
-                }
-            }
-        }
-    }
-
-    suspend fun isLogin(): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
-        if (parseUser == null) {
-            false
-        } else {
-            parseInstallation.put("user", parseUser)
-            parseInstallation.save()
-            parseUser.isAuthenticated
-        }
-    }
-
-    suspend fun createAccount(): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
-        val distributionPair = KeyPair.fromSecretSeed(distributionKey)
-        val newAccountPair = KeyPair.random()
-
-        val server = Server("https://horizon-testnet.stellar.org")
-
-        val distributionAccount = server.accounts().account(distributionPair)
-        val createAccountTransaction = Transaction.Builder(distributionAccount, Network.TESTNET)
-            .addOperation(CreateAccountOperation.Builder(newAccountPair, "5").build())
-            .addMemo(Memo.text("Create new account from HEBA"))
-            .setTimeout(180)
-            .build()
-        createAccountTransaction.sign(distributionPair)
-
-        try {
-            server.submitTransaction(createAccountTransaction)
-
-            prefDataSource.saveAccount(Account(newAccountPair.accountId, String(newAccountPair.secretSeed)))
-
-            Log.d("test", newAccountPair.accountId)
-            Log.d("test", String(newAccountPair.secretSeed))
-
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    suspend fun issuerTrust() = withContext(scope.coroutineContext + Dispatchers.IO) {
-        val account = prefDataSource.getAccount() ?: return@withContext null
-        val accountPair = KeyPair.fromSecretSeed(account.key)
+    suspend fun trustIDR(account: Account) = withContext(scope.coroutineContext + Dispatchers.IO) {
+        val accountPair = KeyPair.fromSecretSeed(account.secretKey)
         val issuerPair = KeyPair.fromSecretSeed(issuerKey)
         val asset = Asset.createNonNativeAsset("IDR", issuerPair)
 
@@ -113,8 +45,6 @@ class Repository(
 
         val changeTrustTransaction = Transaction.Builder(newAccount, Network.TESTNET)
             .addOperation(ChangeTrustOperation.Builder(asset, "20000000").build())
-            .addOperation(ManageDataOperation.Builder("hepiId", parseUser.username.toByteArray()).build())
-            .addMemo(Memo.text("Trust IDR from HEBA"))
             .setTimeout(180)
             .build()
         changeTrustTransaction.sign(accountPair)
@@ -127,43 +57,22 @@ class Repository(
     }
 
     suspend fun getAccount(): Account? = withContext(scope.coroutineContext + Dispatchers.IO) {
-        prefDataSource.getAccount()
-    }
+        val db = LocalDatabase.connect(context)
 
-    suspend fun clearAccount() = withContext(scope.coroutineContext + Dispatchers.IO) {
-        prefDataSource.clearAccount()
-    }
+        val account = db.accountDao().getDefault()
 
-    suspend fun topupIDR(): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
-        val account = prefDataSource.getAccount() ?: return@withContext false
-        val accountPair = KeyPair.fromSecretSeed(account.key)
-        val issuerPair = KeyPair.fromSecretSeed(issuerKey)
-        val asset = Asset.createNonNativeAsset("IDR", issuerPair)
-
-        val server = Server("https://horizon-testnet.stellar.org")
-
-        val issuerAccount = server.accounts().account(issuerPair)
-
-        val changeTrustTransaction = Transaction.Builder(issuerAccount, Network.TESTNET)
-            .addOperation(PaymentOperation.Builder(accountPair, asset, "100000").build())
-            .addMemo(Memo.text("Topup IDR from HEBA"))
-            .setTimeout(180)
-            .build()
-        changeTrustTransaction.sign(issuerPair)
-
-        try {
-            server.submitTransaction(changeTrustTransaction)
-
-            true
-        } catch (e: Exception) {
-            false
+        if (account == null) {
+            db.close()
+            return@withContext null
         }
+
+        db.close()
+
+        return@withContext Account(account.accountId, account.secretKey)
     }
 
-    suspend fun getXLM(): String? = withContext(scope.coroutineContext + Dispatchers.IO) {
-        val account = prefDataSource.getAccount() ?: return@withContext null
-
-        val pair = KeyPair.fromAccountId(account.id)
+    suspend fun getXLM(account: Account): String? = withContext(scope.coroutineContext + Dispatchers.IO) {
+        val pair = KeyPair.fromAccountId(account.accountId)
 
         val server = Server("https://horizon-testnet.stellar.org")
         val serverAccount = server.accounts().account(pair)
@@ -172,10 +81,8 @@ class Repository(
         balanceInfo.balance
     }
 
-    suspend fun getIDR(): String? = withContext(scope.coroutineContext + Dispatchers.IO) {
-        val account = prefDataSource.getAccount() ?: return@withContext null
-
-        val pair = KeyPair.fromAccountId(account.id)
+    suspend fun getIDR(account: Account): String? = withContext(scope.coroutineContext + Dispatchers.IO) {
+        val pair = KeyPair.fromAccountId(account.accountId)
 
         val server = Server("https://horizon-testnet.stellar.org")
         val serverAccount = server.accounts().account(pair)
@@ -184,10 +91,9 @@ class Repository(
         balanceInfo.balance
     }
 
-    suspend fun send(to: Account, amount: Int): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
-        val account = prefDataSource.getAccount() ?: return@withContext false
-        val accountPair = KeyPair.fromSecretSeed(account.key)
-        val toPair = KeyPair.fromAccountId(to.id)
+    suspend fun send(from: Account, to: Account, amount: Int): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
+        val accountPair = KeyPair.fromSecretSeed(from.secretKey)
+        val toPair = KeyPair.fromAccountId(to.accountId)
         val issuerPair = KeyPair.fromSecretSeed(issuerKey)
         val asset = Asset.createNonNativeAsset("IDR", issuerPair)
 
@@ -210,25 +116,16 @@ class Repository(
         }
     }
 
-    suspend fun sendNotification(username: String, msg: String): Boolean = withContext(scope.coroutineContext + Dispatchers.IO) {
-        suspendCancellableCoroutine<Boolean> {
-            it.invokeOnCancellation {
-                cancel()
-            }
-
-            val parameters = HashMap<String, String>()
-            parameters["username"] = username
-            parameters["msg"] = msg
-
-            ParseCloud.callFunctionInBackground("sendnotification", parameters,
-                FunctionCallback<Map<String, Any>> { _, e ->
-                    if (e == null) {
-                        it.resume(true)
-                    } else {
-                        it.resume(false)
-                    }
+    suspend fun sendNotification(username: String, msg: String): Boolean =
+        withContext(scope.coroutineContext + Dispatchers.IO) {
+            suspendCancellableCoroutine<Boolean> {
+                it.invokeOnCancellation {
+                    cancel()
                 }
-            )
+
+                val parameters = HashMap<String, String>()
+                parameters["username"] = username
+                parameters["msg"] = msg
+            }
         }
-    }
 }

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import com.teguholica.hepipay.R
 import com.teguholica.hepipay.commons.BaseActivity
-import com.teguholica.hepipay.datasources.PrefDataSource
 import com.teguholica.hepipay.models.Account
 import com.teguholica.hepipay.repositories.Repository
 import com.teguholica.hepipay.ui.scanner.ScannerActivity
@@ -14,7 +13,7 @@ import kotlinx.coroutines.launch
 
 class SendActivity : BaseActivity() {
 
-    private val repository by lazy { Repository(this, PrefDataSource(this)) }
+    private val repository by lazy { Repository(this, this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,16 +47,16 @@ class SendActivity : BaseActivity() {
     }
 
     private fun sendIDR(to: Account, amount: Int) {
-        launch(Dispatchers.Main) {
-            val isSent = repository.send(to, amount)
-
-            if (isSent) {
-                showToast("IDR sent")
-                repository.sendNotification("emulator@gmail.com", "")
-                onBackPressed()
-            } else {
-                showDialogMessage("failed to send IDR")
-            }
-        }
+//        launch(Dispatchers.Main) {
+//            val isSent = repository.send(to, amount)
+//
+//            if (isSent) {
+//                showToast("IDR sent")
+//                repository.sendNotification("emulator@gmail.com", "")
+//                onBackPressed()
+//            } else {
+//                showDialogMessage("failed to send IDR")
+//            }
+//        }
     }
 }

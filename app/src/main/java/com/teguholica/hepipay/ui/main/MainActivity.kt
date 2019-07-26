@@ -5,10 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import com.teguholica.hepipay.R
 import com.teguholica.hepipay.commons.BaseActivity
-import com.teguholica.hepipay.datasources.PrefDataSource
 import com.teguholica.hepipay.models.Account
 import com.teguholica.hepipay.repositories.Repository
 import com.teguholica.hepipay.ui.send.SendActivity
@@ -20,7 +18,7 @@ import net.glxn.qrgen.android.QRCode
 
 class MainActivity : BaseActivity() {
 
-    private val repository by lazy { Repository(this, PrefDataSource(this)) }
+    private val repository by lazy { Repository(this, this) }
     private lateinit var account: Account
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,7 +30,7 @@ class MainActivity : BaseActivity() {
         }
 
         btnTopup.setOnClickListener {
-            topupIDR()
+//            topupIDR()
         }
 
         btnCopyAccount.setOnClickListener {
@@ -52,8 +50,7 @@ class MainActivity : BaseActivity() {
         super.onResume()
 
         getAccountInfo()
-        getXLMBalance()
-        getIDRBalance()
+//        getIDRBalance()
     }
 
     private fun goToSendPage() {
@@ -63,9 +60,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun showAccountId() {
-        txtAccountId.text = account.id
-        Log.d("test", account.id)
-        Log.d("test", account.key)
+        txtAccountId.text = account.accountId
     }
 
     private fun showXLMBalance(balance: String) {
@@ -77,13 +72,13 @@ class MainActivity : BaseActivity() {
     }
 
     private fun generateQRCode() {
-        val myBitmap = QRCode.from(account.id).bitmap()
+        val myBitmap = QRCode.from(account.accountId).bitmap()
         vBarcode.setImageBitmap(myBitmap)
     }
 
     private fun trustIDR() {
         launch(Dispatchers.Main) {
-            repository.issuerTrust()
+            repository.trustIDR(account)
             getAccountInfo()
             getXLMBalance()
             getIDRBalance()
@@ -93,42 +88,38 @@ class MainActivity : BaseActivity() {
 
     private fun clearAccount() {
         launch(Dispatchers.Main) {
-            repository.clearAccount()
+//            repository.clearAccount()
             showDialogMessage("Account cleared")
         }
     }
 
-    private fun topupIDR() {
-        launch(Dispatchers.Main) {
-            val isTopupSuccess = repository.topupIDR()
-            if (isTopupSuccess) {
-                showDialogMessage("Topup success")
-                getXLMBalance()
-                getIDRBalance()
-            } else {
-                showDialogMessage("Topup failed")
-            }
-        }
-    }
+//    private fun topupIDR() {
+//        launch(Dispatchers.Main) {
+//            val isTopupSuccess = repository.topupIDR()
+//            if (isTopupSuccess) {
+//                showDialogMessage("Topup success")
+//                getXLMBalance()
+//                getIDRBalance()
+//            } else {
+//                showDialogMessage("Topup failed")
+//            }
+//        }
+//    }
 
     private fun getAccountInfo() {
         launch(Dispatchers.Main) {
-            val accountResult = repository.getAccount()
-
-            if (accountResult == null) {
-                showToast("Can not get account info")
-                return@launch
-            }
+            val accountResult = repository.getAccount() ?: return@launch
 
             account = accountResult
             showAccountId()
+            getXLMBalance()
             generateQRCode()
         }
     }
 
     private fun getXLMBalance() {
         launch(Dispatchers.Main) {
-            val balance = repository.getXLM()
+            val balance = repository.getXLM(account)
 
             if (balance == null) {
                 showToast("Can not get xlm balance")
@@ -142,7 +133,7 @@ class MainActivity : BaseActivity() {
 
     private fun getIDRBalance() {
         launch(Dispatchers.Main) {
-            val balance = repository.getIDR()
+            val balance = repository.getIDR(account)
 
             if (balance == null) {
                 showToast("Can not get idr balance")
@@ -156,7 +147,7 @@ class MainActivity : BaseActivity() {
 
     private fun copyAccountToClipboard() {
         val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clipData = ClipData.newPlainText("Source Text", account.id)
+        val clipData = ClipData.newPlainText("Source Text", account.accountId)
         clipboardManager.primaryClip = clipData
         showToast("Copy Account ID")
     }
