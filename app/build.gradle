@@ -4,14 +4,12 @@ apply plugin: 'kotlin-android'
 
 apply plugin: 'kotlin-android-extensions'
 
-apply plugin: 'com.google.gms.google-services'
-
 apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion 28
     defaultConfig {
-        applicationId "com.teguholica.hepipay"
+        applicationId "com.koinwarga.client"
         minSdkVersion 19
         targetSdkVersion 28
         versionCode 2
